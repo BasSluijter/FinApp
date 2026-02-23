@@ -1,0 +1,22 @@
+{
+  "name": "FinApp",
+  "short_name": "FinApp",
+  "description": "Persoonlijke financiële tracker app",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%236366f1'/%3E%3Cpath d='M96 40c-30.9 0-56 25.1-56 56s25.1 56 56 56 56-25.1 56-56-25.1-56-56-56zm0 96c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z' fill='%23fff'/%3E%3Cpath d='M96 64c-4.4 0-8 3.6-8 8v16h-8c-4.4 0-8 3.6-8 8s3.6 8 8 8h8v8c0 4.4 3.6 8 8 8s8-3.6 8-8v-8h8c4.4 0 8-3.6 8-8s-3.6-8-8-8h-8V72c0-4.4-3.6-8-8-8z' fill='%23fff'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%236366f1'/%3E%3Cpath d='M256 106.7c-82.4 0-149.3 66.9-149.3 149.3S173.6 405.3 256 405.3 405.3 338.4 405.3 256 338.4 106.7 256 106.7zm0 256c-58.9 0-106.7-47.8-106.7-106.7S197.1 149.3 256 149.3 362.7 197.1 362.7 256 314.9 362.7 256 362.7z' fill='%23fff'/%3E%3Cpath d='M256 170.7c-11.8 0-21.3 9.5-21.3 21.3v42.7h-21.4c-11.8 0-21.3 9.5-21.3 21.3s9.5 21.3 21.3 21.3h21.4v21.4c0 11.8 9.5 21.3 21.3 21.3s21.3-9.5 21.3-21.3v-21.4h21.4c11.8 0 21.3-9.5 21.3-21.3s-9.5-21.3-21.3-21.3h-21.4V192c0-11.8-9.5-21.3-21.3-21.3z' fill='%23fff'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

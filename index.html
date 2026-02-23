@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinApp</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Persoonlijke financiële tracker app">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FinApp">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%236366f1'/%3E%3Cpath d='M96 40c-30.9 0-56 25.1-56 56s25.1 56 56 56 56-25.1 56-56-25.1-56-56-56zm0 96c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z' fill='%23fff'/%3E%3Cpath d='M96 64c-4.4 0-8 3.6-8 8v16h-8c-4.4 0-8 3.6-8 8s3.6 8 8 8h8v8c0 4.4 3.6 8 8 8s8-3.6 8-8v-8h8c4.4 0 8-3.6 8-8s-3.6-8-8-8h-8V72c0-4.4-3.6-8-8-8z' fill='%23fff'/%3E%3C/svg%3E">
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase Config - Pas config.js aan met jouw credentials -->
+    <script src="./config.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // Haal configuratie uit config.js (of fallback naar placeholder)
+        const SUPABASE_URL = (typeof window.SUPABASE_CONFIG !== 'undefined' && window.SUPABASE_CONFIG?.url) || 'PLAK_HIER_JOUW_PROJECT_URL';
+        const SUPABASE_ANON_KEY = (typeof window.SUPABASE_CONFIG !== 'undefined' && window.SUPABASE_CONFIG?.anonKey) || 'PLAK_HIER_JOUW_ANON_KEY';
+        
+        // Check of configuratie is ingevuld
+        if (SUPABASE_URL === 'PLAK_HIER_JOUW_PROJECT_URL' || SUPABASE_ANON_KEY === 'PLAK_HIER_JOUW_ANON_KEY') {
+            document.body.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(to bottom right, #eff6ff, #eef2ff); padding: 20px;">
+                    <div style="background: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 40px; max-width: 500px; text-align: center;">
+                        <h1 style="color: #dc2626; font-size: 24px; margin-bottom: 16px;">⚠️ Configuratie Ontbreekt</h1>
+                        <p style="color: #4b5563; margin-bottom: 24px;">De Supabase configuratie is niet ingevuld.</p>
+                        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; text-align: left; margin-bottom: 16px;">
+                            <p style="color: #991b1b; font-weight: 600; margin-bottom: 8px;">Oplossing:</p>
+                            <ol style="color: #7f1d1d; margin-left: 20px; line-height: 1.6;">
+                                <li>Open <code style="background: #fee2e2; padding: 2px 6px; border-radius: 4px;">config.js</code></li>
+                                <li>Vul je Supabase URL en API key in</li>
+                                <li>Ververs deze pagina</li>
+                            </ol>
+                        </div>
+                        <a href="QUICK_SETUP.md" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
+                            📖 Lees Setup Handleiding
+                        </a>
+                    </div>
+                </div>
+            `;
+            throw new Error('Supabase niet geconfigureerd');
+        }
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Lucide Icons as SVG components
+        const Plus = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        );
+
+        const Trash2 = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+        );
+
+        const Edit2 = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+        );
+
+        const ChevronLeft = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        );
+
+        const ChevronRight = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        );
+
+        const Sun = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+        );
+
+        const Moon = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        );
+
+        const Check = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        );
+
+        const LogOut = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+        );
+
+        const Upload = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        );
+
+        const Menu = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        );
+
+        const User = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        );
+
+        const Home = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        );
+
+        const Copy = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+        );
+
+        const X = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        );
+
+        const UserPlus = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+            </svg>
+        );
+
+        // Account Screen Component
+        const AccountScreen = ({ user, profileData, householdData, householdMembers, darkMode, onClose, onUpdate, theme }) => {
+            const [displayName, setDisplayName] = useState(profileData?.display_name || '');
+            const [householdName, setHouseholdName] = useState(householdData?.name || '');
+            const [inviteCode, setInviteCode] = useState('');
+            const [saving, setSaving] = useState(false);
+            const [message, setMessage] = useState('');
+            const [showInviteInput, setShowInviteInput] = useState(false);
+
+            const generateInviteCode = async () => {
+                setSaving(true);
+                try {
+                    // Generate random 6-char code
+                    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    
+                    const { error } = await supabase
+                        .from('households')
+                        .update({ invite_code: code })
+                        .eq('id', householdData.id);
+
+                    if (error) throw error;
+                    
+                    setMessage('✅ Nieuwe invite code gegenereerd!');
+                    onUpdate();
+                } catch (error) {
+                    setMessage('❌ Fout: ' + error.message);
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const joinHousehold = async () => {
+                if (!inviteCode.trim()) return;
+                
+                setSaving(true);
+                setMessage('');
+                
+                try {
+                    // Find household with this invite code
+                    const { data: household, error: findError } = await supabase
+                        .from('households')
+                        .select('id')
+                        .eq('invite_code', inviteCode.trim().toUpperCase())
+                        .single();
+
+                    if (findError || !household) {
+                        throw new Error('Ongeldige invite code');
+                    }
+
+                    // Update user's profile to join this household
+                    const { error: updateError } = await supabase
+                        .from('profiles')
+                        .update({ household_id: household.id })
+                        .eq('id', user.id);
+
+                    if (updateError) throw updateError;
+
+                    setMessage('✅ Succesvol toegevoegd aan household!');
+                    setTimeout(() => window.location.reload(), 1500);
+                } catch (error) {
+                    setMessage('❌ ' + error.message);
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const saveSettings = async () => {
+                setSaving(true);
+                setMessage('');
+                
+                try {
+                    // Update profile
+                    const { error: profileError } = await supabase
+                        .from('profiles')
+                        .update({ display_name: displayName })
+                        .eq('id', user.id);
+
+                    if (profileError) throw profileError;
+
+                    // Update household name
+                    const { error: householdError } = await supabase
+                        .from('households')
+                        .update({ name: householdName })
+                        .eq('id', householdData.id);
+
+                    if (householdError) throw householdError;
+
+                    setMessage('✅ Instellingen opgeslagen!');
+                    onUpdate();
+                } catch (error) {
+                    setMessage('❌ Fout: ' + error.message);
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const copyToClipboard = (text) => {
+                navigator.clipboard.writeText(text);
+                setMessage('📋 Gekopieerd naar klembord!');
+                setTimeout(() => setMessage(''), 2000);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className={`${theme.card} rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto`}>
+                        {/* Header */}
+                        <div className="sticky top-0 bg-inherit p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">Account Instellingen</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Profile Section */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    <User size={20} />
+                                    Profiel
+                                </h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Email</label>
+                                        <input
+                                            type="text"
+                                            value={user.email}
+                                            disabled
+                                            className={`w-full p-2 ${theme.border} border rounded-lg ${theme.text} ${darkMode ? 'bg-gray-700' : 'bg-gray-200 text-gray-700'}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Weergavenaam</label>
+                                        <input
+                                            type="text"
+                                            value={displayName}
+                                            onChange={(e) => setDisplayName(e.target.value)}
+                                            placeholder="Jouw naam"
+                                            className={`w-full p-2 ${theme.border} border rounded-lg ${theme.text} ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Household Section */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                                        <Home size={20} />
+                                        Household
+                                    </h3>
+                                    <button
+                                        onClick={() => setShowInviteInput(!showInviteInput)}
+                                        className={`p-1.5 ${showInviteInput ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-500 hover:bg-indigo-600'} text-white rounded transition-all`}
+                                        title={showInviteInput ? 'Annuleren' : 'Voeg toe aan een ander household'}
+                                    >
+                                        {showInviteInput ? <X size={16} /> : <Plus size={16} />}
+                                    </button>
+                                </div>
+
+                                {/* Join Household Form */}
+                                {showInviteInput && (
+                                    <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 border border-blue-200 dark:border-blue-700 rounded-lg space-y-2">
+                                        <p className="text-sm font-medium">Voeg toe aan een ander household</p>
+                                        <input
+                                            type="text"
+                                            value={inviteCode}
+                                            onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                                            placeholder="INVITE-CODE"
+                                            className={`w-full p-2 ${theme.border} border rounded-lg ${theme.text} font-mono ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
+                                            maxLength={6}
+                                        />
+                                        <button
+                                            onClick={joinHousehold}
+                                            disabled={saving || !inviteCode.trim()}
+                                            className={`w-full p-2 ${theme.button} text-white rounded-lg disabled:opacity-50`}
+                                        >
+                                            Lid Worden
+                                        </button>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                                            ⚠️ Je verlaat je huidige household en al je data blijft bij het oude household.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Household Naam</label>
+                                        <input
+                                            type="text"
+                                            value={householdName}
+                                            onChange={(e) => setHouseholdName(e.target.value)}
+                                            className={`w-full p-2 ${theme.border} border rounded-lg ${theme.text} ${darkMode ? 'bg-gray-700' : 'bg-white'}`}
+                                        />
+                                    </div>
+
+                                    {/* Invite Code */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Invite Code</label>
+                                        {householdData?.invite_code ? (
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={householdData.invite_code}
+                                                    readOnly
+                                                    className={`flex-1 p-2 ${theme.border} border rounded-lg ${theme.text} font-mono text-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-200 text-gray-700'}`}
+                                                />
+                                                <button
+                                                    onClick={() => copyToClipboard(householdData.invite_code)}
+                                                    className={`p-2 ${theme.button} text-white rounded-lg`}
+                                                >
+                                                    <Copy size={20} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={generateInviteCode}
+                                                disabled={saving}
+                                                className={`w-full p-2 ${theme.button} text-white rounded-lg`}
+                                            >
+                                                Genereer Invite Code
+                                            </button>
+                                        )}
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Deel deze code met anderen om ze toe te voegen aan je household
+                                        </p>
+                                    </div>
+
+                                    {householdData?.invite_code && (
+                                        <button
+                                            onClick={generateInviteCode}
+                                            disabled={saving}
+                                            className={`w-full p-2 border ${theme.border} rounded-lg text-sm`}
+                                        >
+                                            Nieuwe Code Genereren
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Members Section */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    <UserPlus size={20} />
+                                    Leden ({householdMembers.length})
+                                </h3>
+                                <div className="space-y-2">
+                                    {householdMembers.map((member, index) => (
+                                        <div key={index} className={`p-3 ${theme.border} border rounded-lg flex items-center gap-3`}>
+                                            <User size={16} className="text-gray-500" />
+                                            <div className="flex-1">
+                                                <p className="font-medium">{member.display_name || member.email}</p>
+                                                {member.display_name && (
+                                                    <p className="text-xs text-gray-500">{member.email}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Message */}
+                            {message && (
+                                <div className={`p-3 rounded-lg text-sm ${
+                                    message.includes('✅') ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100' : 
+                                    message.includes('❌') ? 'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-100' :
+                                    'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-100'
+                                }`}>
+                                    {message}
+                                </div>
+                            )}
+
+                            {/* Save Button */}
+                            <button
+                                onClick={saveSettings}
+                                disabled={saving}
+                                className={`w-full p-3 ${theme.button} text-white rounded-lg font-medium disabled:opacity-50`}
+                            >
+                                {saving ? 'Opslaan...' : 'Instellingen Opslaan'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Manage Transactions Screen Component
+        const ManageTransactionsScreen = ({ items, sortOrder, currentYear, currentMonth, onEdit, onDelete, onClose, theme, onReorder, getMonthKey }) => {
+            const [filter, setFilter] = useState('all'); // all, inkomsten, uitgaven
+            const [draggedItemId, setDraggedItemId] = useState(null);
+
+            const filteredItems = items.filter(item => {
+                if (filter === 'all') return true;
+                return item.type === filter;
+            });
+
+            // Use sortOrder if available, otherwise alphabetical
+            const monthKey = getMonthKey(currentYear, currentMonth);
+            const order = sortOrder[monthKey] || sortOrder['_default'] || filteredItems.map(item => item.id);
+            
+            const sortedItems = [...filteredItems].sort((a, b) => {
+                const indexA = order.indexOf(a.id);
+                const indexB = order.indexOf(b.id);
+                
+                // If both are in the order, use that order
+                if (indexA !== -1 && indexB !== -1) {
+                    return indexA - indexB;
+                }
+                // If only one is in order, prioritize it
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+                // Otherwise alphabetical
+                return a.name.localeCompare(b.name);
+            });
+
+            const handleDragStart = (e, itemId) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', itemId);
+                setDraggedItemId(itemId);
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            };
+
+            const handleDrop = (e, targetItemId) => {
+                e.preventDefault();
+                const draggedId = parseInt(e.dataTransfer.getData('text/plain'));
+                
+                if (draggedId === targetItemId) {
+                    setDraggedItemId(null);
+                    return;
+                }
+                
+                // Call parent to reorder
+                if (onReorder) {
+                    onReorder(draggedId, targetItemId);
+                }
+                
+                setDraggedItemId(null);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className={`${theme.card} rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
+                        {/* Header */}
+                        <div className={`sticky top-0 ${theme.card} p-6 border-b ${theme.border} flex justify-between items-center z-10`}>
+                            <h2 className="text-xl font-bold">Transacties Beheren</h2>
+                            <button onClick={onClose} className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg`}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Filter */}
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setFilter('all')}
+                                    className={`flex-1 p-2 rounded-lg ${filter === 'all' ? theme.button + ' text-white' : theme.border + ' border'}`}
+                                >
+                                    Alle ({items.length})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('inkomsten')}
+                                    className={`flex-1 p-2 rounded-lg ${filter === 'inkomsten' ? 'bg-emerald-600 text-white' : theme.border + ' border'}`}
+                                >
+                                    Inkomsten ({items.filter(i => i.type === 'inkomsten').length})
+                                </button>
+                                <button
+                                    onClick={() => setFilter('uitgaven')}
+                                    className={`flex-1 p-2 rounded-lg ${filter === 'uitgaven' ? 'bg-rose-600 text-white' : theme.border + ' border'}`}
+                                >
+                                    Uitgaven ({items.filter(i => i.type === 'uitgaven').length})
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Items List */}
+                        <div className="p-6">
+                            {sortedItems.length === 0 ? (
+                                <p className={`${theme.textSecondary} text-center py-8`}>Geen transacties gevonden</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {sortedItems.map(item => (
+                                        <div
+                                            key={item.id}
+                                            draggable="true"
+                                            onDragStart={(e) => handleDragStart(e, item.id)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, item.id)}
+                                            className={`${theme.border} border rounded-lg p-4 flex items-center justify-between cursor-move transition-all ${
+                                                draggedItemId === item.id ? 'opacity-50' : ''
+                                            }`}
+                                        >
+                                            <div className="flex-1 pointer-events-none">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-medium">{item.name}</p>
+                                                    <span className={`text-xs px-2 py-1 rounded ${item.type === 'inkomsten' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-100' : 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-100'}`}>
+                                                        {item.type === 'inkomsten' ? '+' : '-'}€{parseFloat(item.amount).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <p className={`text-sm ${theme.textSecondary}`}>
+                                                    {item.frequency === 'eenmalig' ? 'Eenmalig' : 
+                                                     item.frequency === 'maandelijks' ? 'Maandelijks' : 
+                                                     'Specifieke maanden'}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-2 pointer-events-auto">
+                                                <button
+                                                    onClick={() => onEdit(item)}
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    className={`p-2 ${theme.button} text-white rounded-lg`}
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm(`Weet je zeker dat je "${item.name}" wilt verwijderen?`)) {
+                                                            onDelete(item.id);
+                                                        }
+                                                    }}
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                    className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Auth Component
+        const AuthScreen = ({ onLogin }) => {
+            const [isLogin, setIsLogin] = useState(true);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [inviteCode, setInviteCode] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setMessage('');
+
+                try {
+                    if (isLogin) {
+                        const { data, error } = await supabase.auth.signInWithPassword({
+                            email,
+                            password
+                        });
+                        if (error) throw error;
+                        onLogin(data.user);
+                    } else {
+                        // Sign up
+                        const { data, error } = await supabase.auth.signUp({
+                            email,
+                            password
+                        });
+                        if (error) throw error;
+                        
+                        // If invite code provided, try to join that household
+                        if (inviteCode.trim() && data.user) {
+                            try {
+                                // Find household with this invite code
+                                const { data: household, error: findError } = await supabase
+                                    .from('households')
+                                    .select('id')
+                                    .eq('invite_code', inviteCode.trim().toUpperCase())
+                                    .single();
+
+                                if (!findError && household) {
+                                    // Update user's profile to join this household
+                                    await supabase
+                                        .from('profiles')
+                                        .update({ household_id: household.id })
+                                        .eq('id', data.user.id);
+                                    
+                                    setMessage('✅ Account aangemaakt en toegevoegd aan household! Je kunt nu inloggen.');
+                                } else {
+                                    setMessage('⚠️ Account aangemaakt maar invite code was ongeldig. Je hebt je eigen household gekregen.');
+                                }
+                            } catch (err) {
+                                setMessage('⚠️ Account aangemaakt maar kon niet toevoegen aan household.');
+                            }
+                        } else {
+                            setMessage('✅ Account aangemaakt! Je kunt nu inloggen.');
+                        }
+                        
+                        setIsLogin(true);
+                    }
+                } catch (error) {
+                    setMessage(error.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+                        <h1 className="text-3xl font-bold text-center mb-2 text-gray-800">Financieel Overzicht</h1>
+                        <p className="text-center text-gray-600 mb-6">
+                            {isLogin ? 'Log in op je account' : 'Maak een nieuw account aan'}
+                        </p>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Wachtwoord</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+
+                            {!isLogin && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Invite Code (optioneel)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={inviteCode}
+                                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                                        placeholder="ABC123"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                                        maxLength={6}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Heb je een invite code? Voer deze in om lid te worden van een bestaand household.
+                                    </p>
+                                </div>
+                            )}
+
+                            {message && (
+                                <div className={`p-3 rounded-lg text-sm ${
+                                    message.includes('✅') ? 'bg-green-50 text-green-700' : 
+                                    message.includes('⚠️') ? 'bg-yellow-50 text-yellow-700' :
+                                    'bg-red-50 text-red-700'
+                                }`}>
+                                    {message}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {loading ? 'Bezig...' : (isLogin ? 'Inloggen' : 'Registreren')}
+                            </button>
+                        </form>
+
+                        <button
+                            onClick={() => setIsLogin(!isLogin)}
+                            className="w-full mt-4 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                        >
+                            {isLogin ? 'Nog geen account? Registreer hier' : 'Heb je al een account? Log in'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Migration Modal Component
+        const MigrationModal = ({ onMigrate, onSkip, theme }) => {
+            const [migrating, setMigrating] = useState(false);
+
+            const handleMigrate = async () => {
+                setMigrating(true);
+                await onMigrate();
+                setMigrating(false);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className={`${theme.card} rounded-2xl shadow-xl max-w-md w-full p-6`}>
+                        <h2 className="text-xl font-bold mb-4">Oude data gevonden! 📦</h2>
+                        <p className={`${theme.textSecondary} mb-6`}>
+                            We hebben data gevonden van de oude offline versie. Wil je deze importeren naar je online account?
+                        </p>
+                        
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleMigrate}
+                                disabled={migrating}
+                                className={`w-full ${theme.button} text-white p-3 rounded-lg font-medium transition-all disabled:opacity-50`}
+                            >
+                                {migrating ? 'Bezig met importeren...' : '✅ Ja, importeer mijn data'}
+                            </button>
+                            <button
+                                onClick={onSkip}
+                                disabled={migrating}
+                                className={`w-full ${theme.border} border p-3 rounded-lg font-medium transition-all`}
+                            >
+                                ❌ Nee, begin met lege app
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const FinanceTracker = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            // Initialize dark mode from localStorage for instant load
+            const [darkMode, setDarkMode] = useState(() => {
+                const cached = localStorage.getItem('finance-dark-mode');
+                return cached === 'true';
+            });
+            const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth());
+            const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+            const [items, setItems] = useState([]);
+            const [showModal, setShowModal] = useState(false);
+            const [editingItem, setEditingItem] = useState(null);
+            const [checkedItems, setCheckedItems] = useState({});
+            const [sortOrder, setSortOrder] = useState({});
+            const [householdId, setHouseholdId] = useState(null);
+            const [showMigrationModal, setShowMigrationModal] = useState(false);
+            const [showMenu, setShowMenu] = useState(false);
+            const [showAccountScreen, setShowAccountScreen] = useState(false);
+            const [showManageTransactions, setShowManageTransactions] = useState(false);
+            const [showItemForm, setShowItemForm] = useState(false);
+            const [forecastCollapsed, setForecastCollapsed] = useState(() => {
+                const cached = localStorage.getItem('finance-forecast-collapsed');
+                return cached !== 'false'; // Default ingeklapt
+            });
+            const [transactionFilter, setTransactionFilter] = useState('all'); // all, checked, unchecked
+            const [householdData, setHouseholdData] = useState(null);
+            const [profileData, setProfileData] = useState(null);
+            const [householdMembers, setHouseholdMembers] = useState([]);
+
+            const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 
+                            'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+
+            // Check authentication status
+            useEffect(() => {
+                const loadSession = async () => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    setUser(session?.user ?? null);
+                    
+                    // Load dark mode setting immediately if user exists
+                    if (session?.user) {
+                        const { data: settings } = await supabase
+                            .from('user_settings')
+                            .select('dark_mode')
+                            .eq('id', session.user.id)
+                            .single();
+                        
+                        if (settings) {
+                            setDarkMode(settings.dark_mode);
+                        }
+                    }
+                    
+                    setLoading(false);
+                };
+                
+                loadSession();
+
+                const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+                    setUser(session?.user ?? null);
+                });
+
+                return () => subscription.unsubscribe();
+            }, []);
+
+            // Load user data from Supabase
+            useEffect(() => {
+                if (!user) return;
+
+                const loadUserData = async () => {
+                    try {
+                        // Get profile and household_id
+                        const { data: profile, error: profileError } = await supabase
+                            .from('profiles')
+                            .select('*')
+                            .eq('id', user.id)
+                            .single();
+
+                        if (profileError) throw profileError;
+                        setHouseholdId(profile.household_id);
+                        setProfileData(profile);
+
+                        // Get household data
+                        const { data: household, error: householdError } = await supabase
+                            .from('households')
+                            .select('*')
+                            .eq('id', profile.household_id)
+                            .single();
+
+                        if (householdError) throw householdError;
+                        setHouseholdData(household);
+
+                        // Get household members
+                        const { data: members, error: membersError } = await supabase
+                            .from('profiles')
+                            .select('email, display_name')
+                            .eq('household_id', profile.household_id);
+
+                        if (!membersError) {
+                            setHouseholdMembers(members || []);
+                        }
+
+                        // Get items
+                        const { data: itemsData, error: itemsError } = await supabase
+                            .from('items')
+                            .select('*')
+                            .eq('household_id', profile.household_id);
+
+                        if (itemsError) throw itemsError;
+                        setItems(itemsData || []);
+
+                        // Get checked items
+                        const { data: checkedData, error: checkedError } = await supabase
+                            .from('checked_items')
+                            .select('*')
+                            .eq('household_id', profile.household_id);
+
+                        if (checkedError) throw checkedError;
+                        
+                        // Convert to our format
+                        const checkedMap = {};
+                        (checkedData || []).forEach(item => {
+                            const key = `${item.year}-${item.month}-${item.item_id}`;
+                            checkedMap[key] = item.checked;
+                        });
+                        setCheckedItems(checkedMap);
+
+                        // Get sort orders
+                        const { data: sortData, error: sortError } = await supabase
+                            .from('sort_orders')
+                            .select('*')
+                            .eq('household_id', profile.household_id);
+
+                        if (sortError) throw sortError;
+                        
+                        // Convert to our format
+                        const sortMap = {};
+                        (sortData || []).forEach(order => {
+                            const key = order.month === null ? '_default' : `${order.year}-${order.month}`;
+                            sortMap[key] = order.item_order;
+                        });
+                        setSortOrder(sortMap);
+
+                        // Check for old localStorage data only if no items in database
+                        if (!itemsData || itemsData.length === 0) {
+                            const oldItems = localStorage.getItem('finance-items');
+                            const oldChecked = localStorage.getItem('finance-checked');
+                            
+                            // Show migration if there's any old data
+                            if (oldItems && oldItems !== '[]' && oldItems !== 'null') {
+                                console.log('Found old localStorage data:', oldItems);
+                                setShowMigrationModal(true);
+                            } else if (oldChecked && oldChecked !== '{}' && oldChecked !== 'null') {
+                                console.log('Found old checked items:', oldChecked);
+                                setShowMigrationModal(true);
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                    }
+                };
+
+                loadUserData();
+            }, [user]);
+
+            // Save dark mode to Supabase and localStorage
+            useEffect(() => {
+                // Always save to localStorage for instant load on refresh
+                localStorage.setItem('finance-dark-mode', darkMode);
+                
+                if (!user) return;
+                
+                const saveDarkMode = async () => {
+                    await supabase
+                        .from('user_settings')
+                        .upsert({ id: user.id, dark_mode: darkMode });
+                };
+
+                saveDarkMode();
+            }, [darkMode, user]);
+
+            // Save forecast collapsed state to localStorage
+            useEffect(() => {
+                localStorage.setItem('finance-forecast-collapsed', forecastCollapsed);
+            }, [forecastCollapsed]);
+
+            const migrateLocalStorageData = async () => {
+                if (!householdId) return;
+
+                try {
+                    const oldItems = JSON.parse(localStorage.getItem('finance-items') || '[]');
+                    const oldChecked = JSON.parse(localStorage.getItem('finance-checked') || '{}');
+                    const oldSort = JSON.parse(localStorage.getItem('finance-sort-order') || '{}');
+
+                    // Migrate items
+                    const itemsToInsert = oldItems.map(item => ({
+                        household_id: householdId,
+                        name: item.name,
+                        amount: item.amount,
+                        type: item.type,
+                        frequency: item.frequency,
+                        month: item.month,
+                        year: item.year,
+                        selected_months: item.selectedMonths || []
+                    }));
+
+                    const { data: insertedItems, error: itemsError } = await supabase
+                        .from('items')
+                        .insert(itemsToInsert)
+                        .select();
+
+                    if (itemsError) throw itemsError;
+
+                    // Create mapping from old IDs to new IDs
+                    const idMap = {};
+                    oldItems.forEach((oldItem, index) => {
+                        idMap[oldItem.id] = insertedItems[index].id;
+                    });
+
+                    // Migrate checked items
+                    const checkedToInsert = [];
+                    Object.entries(oldChecked).forEach(([key, checked]) => {
+                        const [year, month, oldItemId] = key.split('-');
+                        const newItemId = idMap[parseInt(oldItemId)];
+                        if (newItemId && checked) {
+                            checkedToInsert.push({
+                                household_id: householdId,
+                                item_id: newItemId,
+                                year: parseInt(year),
+                                month: parseInt(month),
+                                checked: true
+                            });
+                        }
+                    });
+
+                    if (checkedToInsert.length > 0) {
+                        const { error: checkedError } = await supabase
+                            .from('checked_items')
+                            .insert(checkedToInsert);
+                        if (checkedError) throw checkedError;
+                    }
+
+                    // Migrate sort orders
+                    const sortToInsert = [];
+                    Object.entries(oldSort).forEach(([key, itemOrder]) => {
+                        const newItemOrder = itemOrder.map(oldId => idMap[oldId]).filter(Boolean);
+                        if (key === '_default') {
+                            sortToInsert.push({
+                                household_id: householdId,
+                                year: null,
+                                month: null,
+                                item_order: newItemOrder
+                            });
+                        } else {
+                            const [year, month] = key.split('-');
+                            sortToInsert.push({
+                                household_id: householdId,
+                                year: parseInt(year),
+                                month: parseInt(month),
+                                item_order: newItemOrder
+                            });
+                        }
+                    });
+
+                    if (sortToInsert.length > 0) {
+                        const { error: sortError } = await supabase
+                            .from('sort_orders')
+                            .insert(sortToInsert);
+                        if (sortError) throw sortError;
+                    }
+
+                    // Clear localStorage after successful migration
+                    localStorage.removeItem('finance-items');
+                    localStorage.removeItem('finance-checked');
+                    localStorage.removeItem('finance-sort-order');
+
+                    // Reload data
+                    window.location.reload();
+                } catch (error) {
+                    console.error('Migration error:', error);
+                    alert('Er ging iets mis bij het importeren. Probeer het opnieuw of neem contact op.');
+                }
+            };
+
+            // Import data from JSON file
+            const importDataFromFile = async (event) => {
+                const file = event.target.files[0];
+                if (!file || !householdId) return;
+
+                try {
+                    const text = await file.text();
+                    const importedData = JSON.parse(text);
+
+                    // Validate data structure
+                    if (!importedData.items || !Array.isArray(importedData.items)) {
+                        alert('Ongeldig backup bestand!');
+                        return;
+                    }
+
+                    // Import items
+                    const itemsToInsert = importedData.items.map(item => ({
+                        household_id: householdId,
+                        name: item.name,
+                        amount: item.amount,
+                        type: item.type,
+                        frequency: item.frequency,
+                        month: item.month,
+                        year: item.year,
+                        selected_months: item.selectedMonths || item.selected_months || []
+                    }));
+
+                    const { data: insertedItems, error: itemsError } = await supabase
+                        .from('items')
+                        .insert(itemsToInsert)
+                        .select();
+
+                    if (itemsError) throw itemsError;
+
+                    // Create ID mapping
+                    const idMap = {};
+                    importedData.items.forEach((oldItem, index) => {
+                        idMap[oldItem.id] = insertedItems[index].id;
+                    });
+
+                    // Import checked items
+                    const checkedToInsert = [];
+                    if (importedData.checkedItems) {
+                        Object.entries(importedData.checkedItems).forEach(([key, checked]) => {
+                            const [year, month, oldItemId] = key.split('-');
+                            const newItemId = idMap[parseInt(oldItemId)];
+                            if (newItemId && checked) {
+                                checkedToInsert.push({
+                                    household_id: householdId,
+                                    item_id: newItemId,
+                                    year: parseInt(year),
+                                    month: parseInt(month),
+                                    checked: true
+                                });
+                            }
+                        });
+
+                        if (checkedToInsert.length > 0) {
+                            await supabase.from('checked_items').insert(checkedToInsert);
+                        }
+                    }
+
+                    // Import sort orders
+                    const sortToInsert = [];
+                    if (importedData.sortOrder) {
+                        Object.entries(importedData.sortOrder).forEach(([key, itemOrder]) => {
+                            const newItemOrder = itemOrder.map(oldId => idMap[oldId]).filter(Boolean);
+                            if (key === '_default') {
+                                sortToInsert.push({
+                                    household_id: householdId,
+                                    year: null,
+                                    month: null,
+                                    item_order: newItemOrder
+                                });
+                            } else {
+                                const [year, month] = key.split('-');
+                                sortToInsert.push({
+                                    household_id: householdId,
+                                    year: parseInt(year),
+                                    month: parseInt(month),
+                                    item_order: newItemOrder
+                                });
+                            }
+                        });
+
+                        if (sortToInsert.length > 0) {
+                            await supabase.from('sort_orders').insert(sortToInsert);
+                        }
+                    }
+
+                    alert('✅ Data succesvol geïmporteerd!');
+                    window.location.reload();
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('❌ Er ging iets mis bij het importeren: ' + error.message);
+                }
+            };
+
+            const getMonthKey = (year, month) => `${year}-${month}`;
+
+            const toggleItem = async (itemId) => {
+                const key = `${getMonthKey(currentYear, currentMonthIndex)}-${itemId}`;
+                const newChecked = !checkedItems[key];
+
+                setCheckedItems(prev => ({
+                    ...prev,
+                    [key]: newChecked
+                }));
+
+                // Save to Supabase
+                await supabase
+                    .from('checked_items')
+                    .upsert({
+                        household_id: householdId,
+                        item_id: itemId,
+                        year: currentYear,
+                        month: currentMonthIndex,
+                        checked: newChecked
+                    });
+            };
+
+            const isItemChecked = (itemId) => {
+                const key = `${getMonthKey(currentYear, currentMonthIndex)}-${itemId}`;
+                return checkedItems[key] || false;
+            };
+
+            const shouldShowItem = (item, month, year) => {
+                if (item.frequency === 'eenmalig') {
+                    return item.month === month && item.year === year;
+                } else if (item.frequency === 'maandelijks') {
+                    return true;
+                } else if (item.frequency === 'specifiek' && item.selected_months) {
+                    return item.selected_months.includes(month);
+                }
+                return false;
+            };
+
+            const getCurrentMonthItems = () => {
+                const monthKey = getMonthKey(currentYear, currentMonthIndex);
+                const filtered = items.filter(item => shouldShowItem(item, currentMonthIndex, currentYear));
+                
+                if (sortOrder[monthKey] && sortOrder[monthKey].length > 0) {
+                    return filtered.sort((a, b) => {
+                        const indexA = sortOrder[monthKey].indexOf(a.id);
+                        const indexB = sortOrder[monthKey].indexOf(b.id);
+                        
+                        if (indexA !== -1 && indexB !== -1) {
+                            return indexA - indexB;
+                        }
+                        if (indexA !== -1) return -1;
+                        if (indexB !== -1) return 1;
+                        
+                        return a.id - b.id;
+                    });
+                }
+                
+                if (sortOrder['_default'] && sortOrder['_default'].length > 0) {
+                    return filtered.sort((a, b) => {
+                        const indexA = sortOrder['_default'].indexOf(a.id);
+                        const indexB = sortOrder['_default'].indexOf(b.id);
+                        
+                        if (indexA !== -1 && indexB !== -1) {
+                            return indexA - indexB;
+                        }
+                        if (indexA !== -1) return -1;
+                        if (indexB !== -1) return 1;
+                        
+                        return a.id - b.id;
+                    });
+                }
+                
+                return filtered.sort((a, b) => a.id - b.id);
+            };
+
+            const calculateTotals = () => {
+                const currentItems = getCurrentMonthItems();
+                const income = currentItems
+                    .filter(item => item.type === 'inkomsten' && isItemChecked(item.id))
+                    .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+                
+                const expenses = currentItems
+                    .filter(item => item.type === 'uitgaven' && isItemChecked(item.id))
+                    .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+                
+                return { income, expenses, balance: income - expenses };
+            };
+
+            const calculateFutureTotals = (startDate, endDate) => {
+                let futureIncome = 0;
+                let futureExpenses = 0;
+                
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                
+                let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
+                const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+                
+                while (currentDate <= endMonth) {
+                    const month = currentDate.getMonth();
+                    const year = currentDate.getFullYear();
+                    const monthItems = items.filter(item => shouldShowItem(item, month, year));
+                    
+                    const monthKey = getMonthKey(year, month);
+                    monthItems.forEach(item => {
+                        const itemKey = `${monthKey}-${item.id}`;
+                        const isChecked = checkedItems[itemKey] || false;
+                        
+                        if (!isChecked) {
+                            if (item.type === 'inkomsten') {
+                                futureIncome += parseFloat(item.amount || 0);
+                            } else {
+                                futureExpenses += parseFloat(item.amount || 0);
+                            }
+                        }
+                    });
+                    
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                }
+                
+                return { futureIncome, futureExpenses };
+            };
+
+            const [forecastStartDate, setForecastStartDate] = useState(() => {
+                const currentMonth = new Date(currentYear, currentMonthIndex, 1);
+                return currentMonth.toISOString().split('T')[0];
+            });
+            
+            const [forecastEndDate, setForecastEndDate] = useState(() => {
+                const currentMonthEnd = new Date(currentYear, currentMonthIndex + 1, 0);
+                return currentMonthEnd.toISOString().split('T')[0];
+            });
+
+            const nextMonth = () => {
+                if (currentMonthIndex === 11) {
+                    setCurrentMonthIndex(0);
+                    setCurrentYear(currentYear + 1);
+                    const currentMonth = new Date(currentYear + 1, 0, 1);
+                    setForecastStartDate(currentMonth.toISOString().split('T')[0]);
+                    const endCurrentMonth = new Date(currentYear + 1, 1, 0);
+                    setForecastEndDate(endCurrentMonth.toISOString().split('T')[0]);
+                } else {
+                    setCurrentMonthIndex(currentMonthIndex + 1);
+                    const currentMonth = new Date(currentYear, currentMonthIndex + 1, 1);
+                    setForecastStartDate(currentMonth.toISOString().split('T')[0]);
+                    const endCurrentMonth = new Date(currentYear, currentMonthIndex + 2, 0);
+                    setForecastEndDate(endCurrentMonth.toISOString().split('T')[0]);
+                }
+            };
+
+            const prevMonth = () => {
+                if (currentMonthIndex === 0) {
+                    setCurrentMonthIndex(11);
+                    setCurrentYear(currentYear - 1);
+                    const currentMonth = new Date(currentYear - 1, 11, 1);
+                    setForecastStartDate(currentMonth.toISOString().split('T')[0]);
+                    const endCurrentMonth = new Date(currentYear - 1, 12, 0);
+                    setForecastEndDate(endCurrentMonth.toISOString().split('T')[0]);
+                } else {
+                    setCurrentMonthIndex(currentMonthIndex - 1);
+                    const currentMonth = new Date(currentYear, currentMonthIndex - 1, 1);
+                    setForecastStartDate(currentMonth.toISOString().split('T')[0]);
+                    const endCurrentMonth = new Date(currentYear, currentMonthIndex, 0);
+                    setForecastEndDate(endCurrentMonth.toISOString().split('T')[0]);
+                }
+            };
+
+            const addOrUpdateItem = async (item) => {
+                if (editingItem) {
+                    // Update existing item
+                    const { error } = await supabase
+                        .from('items')
+                        .update({
+                            name: item.name,
+                            amount: item.amount,
+                            type: item.type,
+                            frequency: item.frequency,
+                            month: item.month,
+                            year: item.year,
+                            selected_months: item.selectedMonths || []
+                        })
+                        .eq('id', editingItem.id);
+
+                    if (!error) {
+                        setItems(items.map(i => i.id === editingItem.id ? { ...item, id: editingItem.id } : i));
+                    }
+                } else {
+                    // Insert new item
+                    const { data, error } = await supabase
+                        .from('items')
+                        .insert({
+                            household_id: householdId,
+                            name: item.name,
+                            amount: item.amount,
+                            type: item.type,
+                            frequency: item.frequency,
+                            month: item.month,
+                            year: item.year,
+                            selected_months: item.selectedMonths || []
+                        })
+                        .select()
+                        .single();
+
+                    if (!error) {
+                        setItems([...items, data]);
+                    }
+                }
+                setShowModal(false);
+                setEditingItem(null);
+            };
+
+            const deleteItem = async (id) => {
+                await supabase
+                    .from('items')
+                    .delete()
+                    .eq('id', id);
+
+                setItems(items.filter(item => item.id !== id));
+                
+                // Clean up checked states
+                const newChecked = { ...checkedItems };
+                Object.keys(newChecked).forEach(key => {
+                    if (key.endsWith(`-${id}`)) delete newChecked[key];
+                });
+                setCheckedItems(newChecked);
+            };
+
+            const handleDragStart = (e, itemId) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', itemId);
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            };
+
+            const handleDrop = async (e, targetItemId) => {
+                e.preventDefault();
+                const draggedItemId = parseInt(e.dataTransfer.getData('text/plain'));
+                
+                if (draggedItemId === targetItemId) return;
+                
+                const monthKey = getMonthKey(currentYear, currentMonthIndex);
+                const currentItems = getCurrentMonthItems();
+                const currentOrder = sortOrder[monthKey] || sortOrder['_default'] || currentItems.map(item => item.id);
+                
+                const newOrder = currentOrder.filter(id => id !== draggedItemId);
+                const targetIndex = newOrder.indexOf(targetItemId);
+                newOrder.splice(targetIndex, 0, draggedItemId);
+                
+                const newSortOrder = {
+                    ...sortOrder,
+                    [monthKey]: newOrder,
+                    '_default': newOrder
+                };
+                
+                setSortOrder(newSortOrder);
+
+                // Save both month-specific and default to Supabase
+                try {
+                    // First, delete existing entries for this month and default
+                    await supabase
+                        .from('sort_orders')
+                        .delete()
+                        .eq('household_id', householdId)
+                        .eq('year', currentYear)
+                        .eq('month', currentMonthIndex);
+
+                    await supabase
+                        .from('sort_orders')
+                        .delete()
+                        .eq('household_id', householdId)
+                        .is('year', null)
+                        .is('month', null);
+
+                    // Then insert new ones
+                    await supabase
+                        .from('sort_orders')
+                        .insert({
+                            household_id: householdId,
+                            year: currentYear,
+                            month: currentMonthIndex,
+                            item_order: newOrder
+                        });
+
+                    await supabase
+                        .from('sort_orders')
+                        .insert({
+                            household_id: householdId,
+                            year: null,
+                            month: null,
+                            item_order: newOrder
+                        });
+                } catch (error) {
+                    console.error('Error saving sort order:', error);
+                }
+            };
+
+            const handleLogout = async () => {
+                await supabase.auth.signOut();
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                            <p className="text-gray-600">Laden...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!user) {
+                return <AuthScreen onLogin={setUser} />;
+            }
+
+            const totals = calculateTotals();
+            const futureTotals = calculateFutureTotals(forecastStartDate, forecastEndDate);
+
+            const theme = darkMode ? {
+                bg: 'bg-gray-900',
+                card: 'bg-gray-800',
+                text: 'text-gray-100',
+                textSecondary: 'text-gray-400',
+                border: 'border-gray-700',
+                income: 'bg-emerald-900 text-emerald-100',
+                expense: 'bg-rose-900 text-rose-100',
+                button: 'bg-blue-600 hover:bg-blue-700',
+                checked: 'bg-gray-700'
+            } : {
+                bg: 'bg-gradient-to-br from-blue-50 to-indigo-50',
+                card: 'bg-white',
+                text: 'text-gray-800',
+                textSecondary: 'text-gray-600',
+                border: 'border-gray-200',
+                income: 'bg-emerald-50 text-emerald-700',
+                expense: 'bg-rose-50 text-rose-700',
+                button: 'bg-indigo-500 hover:bg-indigo-600',
+                checked: 'bg-gray-50'
+            };
+
+            return (
+                <div className={`min-h-screen ${theme.bg} ${theme.text} transition-colors duration-300`}>
+                    {/* Top Menu Bar - Sticky */}
+                    <div className={`sticky top-0 z-30 ${theme.card} shadow-md`}>
+                        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setShowMenu(true)}
+                                    className={`p-2 rounded-lg ${theme.button} text-white transition-all`}
+                                >
+                                    <Menu size={20} />
+                                </button>
+                                <h1 className="text-xl font-bold">FinApp</h1>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-2xl mx-auto flex flex-col" style={{height: 'calc(100vh - 60px)'}}>
+                        {/* Month Navigation - Sticky Top */}
+                        <div className={`${theme.card} shadow-lg p-4 m-4 mb-2 rounded-2xl sticky top-16 z-20`}>
+                            <div className="flex items-center justify-center gap-4">
+                                <button onClick={prevMonth} className={`p-2 rounded-lg ${theme.button} text-white`}>
+                                    <ChevronLeft size={20} />
+                                </button>
+                                <div className="text-center min-w-[180px]">
+                                    <h2 className="text-lg font-semibold">{months[currentMonthIndex]} {currentYear}</h2>
+                                </div>
+                                <button onClick={nextMonth} className={`p-2 rounded-lg ${theme.button} text-white`}>
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Transactions List - Scrollable */}
+                        <div className="flex-1 overflow-y-auto px-4">
+                            <div className={`${theme.card} rounded-2xl shadow-lg p-4`}>
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-base font-semibold">Transacties</h3>
+                                    <button
+                                        onClick={() => {
+                                            setEditingItem(null);
+                                            setShowItemForm(true);
+                                        }}
+                                        className={`${theme.button} text-white rounded-lg p-2 transition-all flex items-center gap-1`}
+                                    >
+                                        <Plus size={18} />
+                                    </button>
+                                </div>
+
+                                {/* Filter Buttons */}
+                                <div className="flex gap-2 mb-3">
+                                    <button
+                                        onClick={() => setTransactionFilter('all')}
+                                        className={`flex-1 px-3 py-1.5 text-xs rounded-lg transition-all ${
+                                            transactionFilter === 'all' 
+                                                ? 'bg-indigo-500 text-white' 
+                                                : theme.border + ' border'
+                                        }`}
+                                    >
+                                        Alle
+                                    </button>
+                                    <button
+                                        onClick={() => setTransactionFilter('checked')}
+                                        className={`flex-1 px-3 py-1.5 text-xs rounded-lg transition-all ${
+                                            transactionFilter === 'checked' 
+                                                ? 'bg-green-600 text-white' 
+                                                : theme.border + ' border'
+                                        }`}
+                                    >
+                                        ✓ Afgevinkt
+                                    </button>
+                                    <button
+                                        onClick={() => setTransactionFilter('unchecked')}
+                                        className={`flex-1 px-3 py-1.5 text-xs rounded-lg transition-all ${
+                                            transactionFilter === 'unchecked' 
+                                                ? 'bg-rose-600 text-white' 
+                                                : theme.border + ' border'
+                                        }`}
+                                    >
+                                        ☐ Te doen
+                                    </button>
+                                </div>
+
+                                {(() => {
+                                    const currentItems = getCurrentMonthItems();
+                                    const filteredItems = currentItems.filter(item => {
+                                        if (transactionFilter === 'all') return true;
+                                        if (transactionFilter === 'checked') return isItemChecked(item.id);
+                                        if (transactionFilter === 'unchecked') return !isItemChecked(item.id);
+                                        return true;
+                                    });
+
+                                    if (filteredItems.length === 0) {
+                                        return <p className={`${theme.textSecondary} text-sm italic text-center py-4`}>
+                                            {transactionFilter === 'all' ? 'Geen transacties deze maand' : 
+                                             transactionFilter === 'checked' ? 'Geen afgevinkte items' : 
+                                             'Geen items te doen'}
+                                        </p>;
+                                    }
+
+                                    return (
+                                        <div>
+                                            {filteredItems.map(item => (
+                                                <div
+                                                    key={item.id}
+                                                    className={`${isItemChecked(item.id) ? theme.checked : ''} ${theme.border} border border-l-4 ${
+                                                        item.type === 'inkomsten' 
+                                                            ? (theme.bg === 'bg-gray-900' ? 'border-l-emerald-500' : 'border-l-emerald-400')
+                                                            : (theme.bg === 'bg-gray-900' ? 'border-l-rose-500' : 'border-l-rose-400')
+                                                    } rounded-lg p-3 mb-2 flex items-center justify-between transition-all`}
+                                                >
+                                                    <div className="flex items-center flex-1">
+                                                        <button
+                                                            onClick={() => toggleItem(item.id)}
+                                                            className={`w-6 h-6 rounded border-2 ${isItemChecked(item.id) ? 'bg-indigo-500 border-indigo-500' : theme.border} flex items-center justify-center mr-3 transition-all flex-shrink-0`}
+                                                        >
+                                                            {isItemChecked(item.id) && <Check size={16} className="text-white" />}
+                                                        </button>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`font-medium text-sm ${isItemChecked(item.id) ? 'line-through opacity-60' : ''}`}>{item.name}</p>
+                                                            <p className={`text-xs ${theme.textSecondary}`}>
+                                                                {item.frequency === 'eenmalig' ? 'Eenmalig' : 
+                                                                 item.frequency === 'maandelijks' ? 'Maandelijks' : 
+                                                                 'Specifieke maanden'}
+                                                            </p>
+                                                        </div>
+                                                        <p className={`font-bold text-sm mr-2 ${isItemChecked(item.id) ? 'opacity-60' : item.type === 'inkomsten' ? 'text-emerald-600' : 'text-rose-600'} flex-shrink-0`}>
+                                                            {item.type === 'inkomsten' ? '+' : '-'}€{parseFloat(item.amount).toFixed(2)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+
+                        {/* Forecast - Sticky Bottom */}
+                        <div className={`${theme.card} shadow-lg m-4 mt-2 rounded-2xl sticky bottom-0 z-20`}>
+                            <button
+                                onClick={() => setForecastCollapsed(!forecastCollapsed)}
+                                className="w-full p-4 flex items-center justify-between"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="text-base font-semibold">📊 Prognose</span>
+                                </div>
+                                {forecastCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} className="rotate-90" />}
+                            </button>
+                            
+                            {!forecastCollapsed && (
+                                <div className="px-4 pb-4">
+                                    <p className={`text-xs ${theme.textSecondary} mb-3`}>Laat alleen niet-afgevinkte items zien</p>
+                                    
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                        <div>
+                                            <label className={`block text-xs ${theme.textSecondary} mb-1`}>Van</label>
+                                            <input
+                                                type="date"
+                                                value={forecastStartDate}
+                                                onChange={(e) => setForecastStartDate(e.target.value)}
+                                                className={`w-full p-2 text-sm ${theme.card} ${theme.border} border rounded-lg ${theme.text}`}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={`block text-xs ${theme.textSecondary} mb-1`}>Tot</label>
+                                            <input
+                                                type="date"
+                                                value={forecastEndDate}
+                                                onChange={(e) => setForecastEndDate(e.target.value)}
+                                                className={`w-full p-2 text-sm ${theme.card} ${theme.border} border rounded-lg ${theme.text}`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className={`${theme.income} rounded-lg p-3`}>
+                                            <p className="text-xs opacity-75 mb-1">Verwachte Inkomsten</p>
+                                            <p className="text-base font-bold">€{futureTotals.futureIncome.toFixed(2)}</p>
+                                        </div>
+                                        <div className={`${theme.expense} rounded-lg p-3`}>
+                                            <p className="text-xs opacity-75 mb-1">Verwachte Uitgaven</p>
+                                            <p className="text-base font-bold">€{futureTotals.futureExpenses.toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Slide-in Menu */}
+                    {showMenu && (
+                        <>
+                            {/* Overlay */}
+                            <div 
+                                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                                onClick={() => setShowMenu(false)}
+                            ></div>
+                            
+                            {/* Menu Panel */}
+                            <div className={`fixed top-0 left-0 h-full w-80 ${theme.card} shadow-2xl z-50 p-6 transform transition-transform`}>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-bold">Menu</h2>
+                                    <button
+                                        onClick={() => setShowMenu(false)}
+                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {/* Account Settings */}
+                                    <button
+                                        onClick={() => {
+                                            setShowAccountScreen(true);
+                                            setShowMenu(false);
+                                        }}
+                                        className={`w-full flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all`}
+                                    >
+                                        <User size={20} />
+                                        <span>Account Instellingen</span>
+                                    </button>
+
+                                    {/* Manage Transactions */}
+                                    <button
+                                        onClick={() => {
+                                            setShowManageTransactions(true);
+                                            setShowMenu(false);
+                                        }}
+                                        className={`w-full flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all`}
+                                    >
+                                        <Edit2 size={20} />
+                                        <span>Transacties Beheren</span>
+                                    </button>
+
+                                    {/* Import Backup */}
+                                    <label className={`w-full flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all cursor-pointer`}>
+                                        <Upload size={20} />
+                                        <span>Importeer Backup</span>
+                                        <input
+                                            type="file"
+                                            accept=".json"
+                                            onChange={(e) => {
+                                                importDataFromFile(e);
+                                                setShowMenu(false);
+                                            }}
+                                            className="hidden"
+                                        />
+                                    </label>
+
+                                    {/* Theme Toggle */}
+                                    <button
+                                        onClick={() => {
+                                            setDarkMode(!darkMode);
+                                        }}
+                                        className={`w-full flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all`}
+                                    >
+                                        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                                        <span>{darkMode ? 'Licht Thema' : 'Donker Thema'}</span>
+                                    </button>
+
+                                    {/* Divider */}
+                                    <div className={`border-t ${theme.border} my-4`}></div>
+
+                                    {/* Logout */}
+                                    <button
+                                        onClick={() => {
+                                            handleLogout();
+                                            setShowMenu(false);
+                                        }}
+                                        className={`w-full flex items-center gap-3 p-3 hover:bg-red-50 dark:hover:bg-red-900 text-red-600 dark:text-red-400 rounded-lg transition-all`}
+                                    >
+                                        <LogOut size={20} />
+                                        <span>Uitloggen</span>
+                                    </button>
+                                </div>
+
+                                {/* User Info Footer */}
+                                <div className={`absolute bottom-6 left-6 right-6 pt-4 border-t ${theme.border}`}>
+                                    <p className="text-sm font-medium">{profileData?.display_name || 'Gebruiker'}</p>
+                                    <p className="text-xs text-gray-500">{user.email}</p>
+                                    {householdData && (
+                                        <p className="text-xs text-gray-500 mt-1">🏠 {householdData.name}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Account Screen */}
+                    {showAccountScreen && (
+                        <AccountScreen
+                            user={user}
+                            profileData={profileData}
+                            householdData={householdData}
+                            householdMembers={householdMembers}
+                            darkMode={darkMode}
+                            onClose={() => setShowAccountScreen(false)}
+                            onUpdate={async () => {
+                                // Reload user data after update
+                                const { data: profile } = await supabase
+                                    .from('profiles')
+                                    .select('*')
+                                    .eq('id', user.id)
+                                    .single();
+                                setProfileData(profile);
+
+                                const { data: household } = await supabase
+                                    .from('households')
+                                    .select('*')
+                                    .eq('id', profile.household_id)
+                                    .single();
+                                setHouseholdData(household);
+
+                                const { data: members } = await supabase
+                                    .from('profiles')
+                                    .select('email, display_name')
+                                    .eq('household_id', profile.household_id);
+                                setHouseholdMembers(members || []);
+                            }}
+                            theme={theme}
+                        />
+                    )}
+
+                    {/* Modals */}
+                    {/* Manage Transactions Screen */}
+                    {showManageTransactions && (
+                        <ManageTransactionsScreen
+                            items={items}
+                            sortOrder={sortOrder}
+                            currentYear={currentYear}
+                            currentMonth={currentMonthIndex}
+                            getMonthKey={getMonthKey}
+                            onEdit={(item) => {
+                                setEditingItem(item);
+                                setShowManageTransactions(false);
+                                setShowItemForm(true);
+                            }}
+                            onDelete={deleteItem}
+                            onReorder={(draggedId, targetId) => {
+                                // Use existing handleDrop function
+                                const fakeEvent = {
+                                    preventDefault: () => {},
+                                    dataTransfer: {
+                                        getData: () => String(draggedId)
+                                    }
+                                };
+                                handleDrop(fakeEvent, targetId);
+                            }}
+                            onClose={() => setShowManageTransactions(false)}
+                            theme={theme}
+                        />
+                    )}
+
+                    {/* Item Form Screen */}
+                    {showItemForm && (
+                        <ItemModal
+                            item={editingItem}
+                            onSave={(item) => {
+                                addOrUpdateItem(item);
+                                setShowItemForm(false);
+                                setEditingItem(null);
+                            }}
+                            onClose={() => {
+                                setShowItemForm(false);
+                                setEditingItem(null);
+                            }}
+                            theme={theme}
+                            currentMonth={currentMonthIndex}
+                            currentYear={currentYear}
+                        />
+                    )}
+
+                    {showMigrationModal && (
+                        <MigrationModal
+                            onMigrate={() => {
+                                migrateLocalStorageData();
+                                setShowMigrationModal(false);
+                            }}
+                            onSkip={() => setShowMigrationModal(false)}
+                            theme={theme}
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const ItemModal = ({ item, onSave, onClose, theme, currentMonth, currentYear }) => {
+            const [formData, setFormData] = useState(item || {
+                name: '',
+                amount: '',
+                type: 'uitgaven',
+                frequency: 'maandelijks',
+                month: currentMonth,
+                year: currentYear,
+                selectedMonths: []
+            });
+
+            const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 
+                            'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+
+            const toggleMonth = (monthIndex) => {
+                const selected = formData.selectedMonths || formData.selected_months || [];
+                if (selected.includes(monthIndex)) {
+                    setFormData({ ...formData, selectedMonths: selected.filter(m => m !== monthIndex) });
+                } else {
+                    setFormData({ ...formData, selectedMonths: [...selected, monthIndex] });
+                }
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (formData.name && formData.amount) {
+                    onSave(formData);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className={`${theme.card} rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto`}>
+                        {/* Sticky Header */}
+                        <div className={`sticky top-0 ${theme.card} p-6 border-b ${theme.border} flex justify-between items-center z-10`}>
+                            <h2 className="text-xl font-bold">{item ? 'Item Bewerken' : 'Nieuw Item'}</h2>
+                            <button onClick={onClose} type="button" className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg`}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSubmit} className="p-6">
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2">Naam</label>
+                                <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    className={`w-full p-2 ${theme.card} ${theme.border} border rounded-lg ${theme.text}`}
+                                    required
+                                />
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2">Bedrag (€)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.amount}
+                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                    className={`w-full p-2 ${theme.card} ${theme.border} border rounded-lg ${theme.text}`}
+                                    required
+                                />
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2">Type</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, type: 'inkomsten' })}
+                                        className={`flex-1 p-2 rounded-lg ${formData.type === 'inkomsten' ? 'bg-emerald-500 text-white' : theme.border + ' border'}`}
+                                    >
+                                        Inkomsten
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, type: 'uitgaven' })}
+                                        className={`flex-1 p-2 rounded-lg ${formData.type === 'uitgaven' ? 'bg-rose-500 text-white' : theme.border + ' border'}`}
+                                    >
+                                        Uitgaven
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2">Frequentie</label>
+                                <select
+                                    value={formData.frequency}
+                                    onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+                                    className={`w-full p-2 ${theme.card} ${theme.border} border rounded-lg ${theme.text}`}
+                                >
+                                    <option value="maandelijks">Maandelijks</option>
+                                    <option value="eenmalig">Eenmalig</option>
+                                    <option value="specifiek">Specifieke maanden</option>
+                                </select>
+                            </div>
+
+                            {formData.frequency === 'eenmalig' && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium mb-2">Maand</label>
+                                    <select
+                                        value={formData.month}
+                                        onChange={(e) => setFormData({ ...formData, month: parseInt(e.target.value) })}
+                                        className={`w-full p-2 ${theme.card} ${theme.border} border rounded-lg ${theme.text}`}
+                                    >
+                                        {months.map((month, index) => (
+                                            <option key={index} value={index}>{month}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {formData.frequency === 'specifiek' && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium mb-2">Selecteer Maanden</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {months.map((month, index) => (
+                                            <button
+                                                key={index}
+                                                type="button"
+                                                onClick={() => toggleMonth(index)}
+                                                className={`p-2 rounded-lg text-xs ${
+                                                    (formData.selectedMonths || formData.selected_months || []).includes(index)
+                                                        ? 'bg-indigo-500 text-white'
+                                                        : theme.border + ' border'
+                                                }`}
+                                            >
+                                                {month.substring(0, 3)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className={`flex-1 p-2 ${theme.border} border rounded-lg`}
+                                >
+                                    Annuleren
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={`flex-1 p-2 ${theme.button} text-white rounded-lg`}
+                                >
+                                    Opslaan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<FinanceTracker />);
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker geregistreerd:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registratie mislukt:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
